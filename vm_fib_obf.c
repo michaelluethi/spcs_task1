@@ -6,7 +6,7 @@
 #include <stdlib.h>
 
 
-static unsigned char fetch(unsigned char *bc, unsigned int p) {
+static unsigned char decrypt(unsigned char *bc, unsigned int p) {
     return bc[p] ^ (unsigned char)(p & 0xFF);
 }
 
@@ -17,22 +17,22 @@ unsigned int vm_execute(unsigned char *bc, unsigned int param0) {
     int flag_ge = 0;
 
     while (1) {
-        unsigned char opcode = fetch(bc, vip);
+        unsigned char opcode = decrypt(bc, vip);
 
         switch (opcode) {
 
             case 0x00:  /* mov reg, const */
-                regs[fetch(bc, vip + 1)] = fetch(bc, vip + 2);
+                regs[decrypt(bc, vip + 1)] = decrypt(bc, vip + 2);
                 vip += 3;
                 break;
 
             case 0x01:  /* mov reg, param0 */
-                regs[fetch(bc, vip + 1)] = param0;
+                regs[decrypt(bc, vip + 1)] = param0;
                 vip += 2;
                 break;
 
             case 0x02:  /* mov dst, src */
-                regs[fetch(bc, vip + 1)] = regs[fetch(bc, vip + 2)];
+                regs[decrypt(bc, vip + 1)] = regs[decrypt(bc, vip + 2)];
                 vip += 3;
                 break;
 
@@ -40,37 +40,37 @@ unsigned int vm_execute(unsigned char *bc, unsigned int param0) {
                 {
                     volatile unsigned int k = vip;
                     unsigned int opaque = (k * k - k) & 1;   /* immer 0 */
-                    flag_eq = (regs[fetch(bc, vip + 1)] == fetch(bc, vip + 2)) ^ opaque;
+                    flag_eq = (regs[decrypt(bc, vip + 1)] == decrypt(bc, vip + 2)) ^ opaque;
                     vip += 3;
                 }
                 break;
 
             case 0x04:  /* cmp_ge reg, reg */
-                flag_ge = (regs[fetch(bc, vip + 1)] >= regs[fetch(bc, vip + 2)]);
+                flag_ge = (regs[decrypt(bc, vip + 1)] >= regs[decrypt(bc, vip + 2)]);
                 vip += 3;
                 break;
 
             case 0x05:  /* add reg, reg  (MBA + opaque predicate) */
                 {
-                    unsigned int x = regs[fetch(bc, vip + 1)];
-                    unsigned int y = regs[fetch(bc, vip + 2)];
+                    unsigned int x = regs[decrypt(bc, vip + 1)];
+                    unsigned int y = regs[decrypt(bc, vip + 2)];
                     volatile unsigned int k = vip;
                     unsigned int opaque = (k * k - k) & 1;   /* immer 0 */
-                    regs[fetch(bc, vip + 1)] = (x ^ y) + 2 * (x & y) + opaque;
+                    regs[decrypt(bc, vip + 1)] = (x ^ y) + 2 * (x & y) + opaque;
                     vip += 3;
                 }
                 break;
 
             case 0x06:  /* je addr */
-                if (flag_eq) { vip = fetch(bc, vip + 1); } else { vip += 2; }
+                if (flag_eq) { vip = decrypt(bc, vip + 1); } else { vip += 2; }
                 break;
 
             case 0x07:  /* jae addr */
-                if (flag_ge) { vip = fetch(bc, vip + 1); } else { vip += 2; }
+                if (flag_ge) { vip = decrypt(bc, vip + 1); } else { vip += 2; }
                 break;
 
             case 0x08:  /* jmp addr */
-                vip = fetch(bc, vip + 1);
+                vip = decrypt(bc, vip + 1);
                 break;
 
             case 0x09:  /* vmexit */
