@@ -5,10 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-/* Entschluesselt das Byte an Position p (Schluessel = p & 0xFF).
- * XOR ist seine eigene Umkehrung -> dieselbe Formel wie beim
- * Verschluesseln. Es wird immer nur genau das gerade benoetigte Byte
- * entschluesselt (gradual decoding). */
+
 static unsigned char fetch(unsigned char *bc, unsigned int p) {
     return bc[p] ^ (unsigned char)(p & 0xFF);
 }

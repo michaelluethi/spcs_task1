@@ -1,13 +1,6 @@
 /*
  * vm_fib.c
- *
- * Task 2 (d) - Virtualisierungs-basierter Interpreter fuer fib().
- * Lecture: Software Protection, HSLU, Autumn Term 2026.
- *
- * Die Funktion fib() wurde in Bytecode fuer eine eigene, register-
- * basierte VM uebersetzt (siehe ISA-Beschreibung). vm_execute()
- * interpretiert diesen eingebetteten Bytecode. fib_orig() bleibt nur
- * zu Vergleichs-/Testzwecken erhalten.
+
  *
  * Build:  gcc -O0 -Wall -o vm_fib vm_fib.c
  * Run:    ./vm_fib <n>
