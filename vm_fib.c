@@ -1,13 +1,13 @@
 /*
  * vm_fib.c
  *
- * Task 2 (d) - Virtualisierungs-basierter Interpreter fuer fib().
+ * Task 2 (d) - Virtualization-based interpreter for fib().
  * Lecture: Software Protection, HSLU, Autumn Term 2026.
  *
- * Die Funktion fib() wurde in Bytecode fuer eine eigene, register-
- * basierte VM uebersetzt (siehe ISA-Beschreibung). vm_execute()
- * interpretiert diesen eingebetteten Bytecode. fib_orig() bleibt nur
- * zu Vergleichs-/Testzwecken erhalten.
+ * The function fib() has been translated into bytecode for a custom,
+ * register-based VM (see the ISA description in DESIGN.md). vm_execute()
+ * interprets this embedded bytecode. fib_orig() is kept only for
+ * comparison/testing.
  *
  * Build:  gcc -O0 -Wall -o vm_fib vm_fib.c
  * Run:    ./vm_fib <n>
@@ -16,7 +16,7 @@
 #include <stdlib.h>
 
 
-/* Original (nur zum Vergleichen beim Testen) */
+/* Original (kept only for comparison during testing) */
 unsigned int fib_orig(unsigned int n) {
   unsigned int a=0;
   unsigned int b=1;
@@ -37,10 +37,10 @@ unsigned int fib_orig(unsigned int n) {
 
 
 /*
- * VM-Interpreter (register-basiert, variable Instruktionslaenge).
- * - vip  : virtual instruction pointer (Byte-Index in den Bytecode)
- * - regs : 256 Register; r0 ist das Rueckgabe-Register (vmexit)
- * - flag_eq / flag_ge : zwei getrennte Vergleichs-Flags
+ * VM interpreter (register-based, variable instruction length).
+ * - vip  : virtual instruction pointer (byte index into the bytecode)
+ * - regs : 256 registers; r0 is the return register (read by vmexit)
+ * - flag_eq / flag_ge : two separate comparison flags
  */
 unsigned int vm_execute(unsigned char *bc, unsigned int param0) {
     unsigned int vip = 0;
@@ -68,14 +68,9 @@ unsigned int vm_execute(unsigned char *bc, unsigned int param0) {
                 vip += 3;
                 break;
 
-            case 0x03:  // cmp reg, const  (opaque-predicate-obfuskiert)
-                {
-                    volatile unsigned int k = vip;        // Laufzeitwert
-                    unsigned int opaque = (k * k - k) & 1; // immer 0 (k*(k-1) ist gerade)
-                    
-                    flag_eq = (regs[bc[vip + 1]] == bc[vip + 2]) ^ opaque;
-                    vip += 3;
-                }
+            case 0x03:  /* cmp reg, const  ->  flag_eq = (regs[reg] == const) */
+                flag_eq = (regs[bc[vip + 1]] == bc[vip + 2]);
+                vip += 3;
                 break;
 
             case 0x04:  /* cmp_ge reg, reg ->  flag_ge = (regs[r0] >= regs[r1]) */
@@ -83,15 +78,9 @@ unsigned int vm_execute(unsigned char *bc, unsigned int param0) {
                 vip += 3;
                 break;
 
-            case 0x05:  // add reg, reg  (MBA + laufzeitabhaengiges opaque predicate)
-                {
-                    unsigned int x = regs[bc[vip + 1]];
-                    unsigned int y = regs[bc[vip + 2]];
-                    volatile unsigned int k = vip;        // Laufzeitwert, Compiler kennt ihn nicht
-                    unsigned int opaque = (k * k - k) & 1; // k*(k-1) ist immer gerade -> &1 == 0
-                    regs[bc[vip + 1]] = (x ^ y) + 2 * (x & y) + opaque;
-                    vip += 3;
-                }
+            case 0x05:  /* add reg, reg    ->  regs[r0] = regs[r0] + regs[r1] */
+                regs[bc[vip + 1]] = regs[bc[vip + 1]] + regs[bc[vip + 2]];
+                vip += 3;
                 break;
 
             case 0x06:  /* je addr         ->  if flag_eq: vip = addr else vip += 2 */
@@ -117,22 +106,22 @@ unsigned int vm_execute(unsigned char *bc, unsigned int param0) {
             case 0x09:  /* vmexit          ->  return r0 */
                 return regs[0];
 
-            default:    /* ungueltiger Opcode */
+            default:    /* invalid opcode */
                 return 0;
         }
     }
 }
 
 
-/* Eingebetteter Bytecode der virtualisierten fib(). Register:
- * r0=a/Rueckgabe, r1=b, r2=s, r3=n, r4=i, r5=Konstante 1. */
+/* Embedded bytecode of the virtualized fib(). Registers:
+ * r0=a/return, r1=b, r2=s, r3=n, r4=i, r5=constant 1. */
 unsigned char bytecode[] = {
     /* ST_ENTRY @0x00 */
     0x00, 0x00, 0x00,   /* mov r0, 0        a = 0 */
     0x00, 0x01, 0x01,   /* mov r1, 1        b = 1 */
-    0x00, 0x05, 0x01,   /* mov r5, 1        Eins-Register (fuer i++) */
+    0x00, 0x05, 0x01,   /* mov r5, 1        one-register (for i++) */
     0x02, 0x02, 0x01,   /* mov r2, r1       s = b */
-    0x01, 0x03,         /* mov r3, param0   n laden */
+    0x01, 0x03,         /* mov r3, param0   load n */
     0x03, 0x03, 0x00,   /* cmp r3, 0        flag_eq = (n == 0) */
     0x06, 0x15,         /* je  0x15         -> ST_RET0 */
     0x08, 0x19,         /* jmp 0x19         -> ST_LOOP_INIT */

@@ -1,10 +1,11 @@
 /*
  * vm_fib_obf.c
  *
- * Task 2 (e) - Interpreter mit zusaetzlich obfuskierten Handlern.
- *   - 0x05 (add): MBA (x^y)+2*(x&y) + laufzeitabhaengiges Opaque Predicate
- *   - 0x03 (cmp): echter Vergleich XOR laufzeitabhaengiges Opaque Predicate
- * Beide ueberleben GCC -O3 dank volatile-gebundenem Laufzeitwert.
+ * Task 2 (e) - Interpreter with two additionally obfuscated handlers.
+ *   - 0x05 (add): MBA (x^y)+2*(x&y) plus a runtime-dependent opaque predicate
+ *   - 0x03 (cmp): real comparison XORed with a runtime-dependent opaque predicate
+ * Both survive GCC -O3 because the opaque value is bound to a volatile
+ * runtime value the compiler cannot precompute.
  *
  * Build:  gcc -O3 -Wall -o vm_fib_obf vm_fib_obf.c
  */
@@ -37,10 +38,10 @@ unsigned int vm_execute(unsigned char *bc, unsigned int param0) {
                 vip += 3;
                 break;
 
-            case 0x03:  /* cmp reg, const  (opaque-predicate-obfuskiert) */
+            case 0x03:  /* cmp reg, const  (obfuscated with an opaque predicate) */
                 {
                     volatile unsigned int k = vip;
-                    unsigned int opaque = (k * k - k) & 1;   /* immer 0 */
+                    unsigned int opaque = (k * k - k) & 1;   /* always 0 */
                     flag_eq = (regs[bc[vip + 1]] == bc[vip + 2]) ^ opaque;
                     vip += 3;
                 }
@@ -56,7 +57,7 @@ unsigned int vm_execute(unsigned char *bc, unsigned int param0) {
                     unsigned int x = regs[bc[vip + 1]];
                     unsigned int y = regs[bc[vip + 2]];
                     volatile unsigned int k = vip;
-                    unsigned int opaque = (k * k - k) & 1;   /* immer 0 */
+                    unsigned int opaque = (k * k - k) & 1;   /* always 0 */
                     regs[bc[vip + 1]] = (x ^ y) + 2 * (x & y) + opaque;
                     vip += 3;
                 }
@@ -83,6 +84,8 @@ unsigned int vm_execute(unsigned char *bc, unsigned int param0) {
     }
 }
 
+/* Embedded bytecode of the virtualized fib() (plaintext). Registers:
+ * r0=a/return, r1=b, r2=s, r3=n, r4=i, r5=constant 1. */
 unsigned char bytecode[] = {
     0x00,0x00,0x00, 0x00,0x01,0x01, 0x00,0x05,0x01, 0x02,0x02,0x01, 0x01,0x03,
     0x03,0x03,0x00, 0x06,0x15, 0x08,0x19, 0x00,0x00,0x00, 0x09,
