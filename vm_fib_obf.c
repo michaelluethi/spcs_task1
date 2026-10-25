@@ -1,14 +1,16 @@
 /*
- * Build:  gcc -O3 -Wall -o vm_fib_blinded vm_fib_blinded.c
- * Run:    ./vm_fib_blinded <n>
+ * vm_fib_obf.c
+ *
+ * Task 2 (e) - Interpreter with two additionally obfuscated handlers.
+ *   - 0x05 (add): MBA (x^y)+2*(x&y) plus a runtime-dependent opaque predicate
+ *   - 0x03 (cmp): real comparison XORed with a runtime-dependent opaque predicate
+ * Both survive GCC -O3 because the opaque value is bound to a volatile
+ * runtime value the compiler cannot precompute.
+ *
+ * Build:  gcc -O3 -Wall -o vm_fib_obf vm_fib_obf.c
  */
 #include <stdio.h>
 #include <stdlib.h>
-
-
-static unsigned char decrypt(unsigned char *bc, unsigned int p) {
-    return bc[p] ^ (unsigned char)(p & 0xFF);
-}
 
 unsigned int vm_execute(unsigned char *bc, unsigned int param0) {
     unsigned int vip = 0;
@@ -17,60 +19,60 @@ unsigned int vm_execute(unsigned char *bc, unsigned int param0) {
     int flag_ge = 0;
 
     while (1) {
-        unsigned char opcode = decrypt(bc, vip);
+        unsigned char opcode = bc[vip];
 
         switch (opcode) {
 
             case 0x00:  /* mov reg, const */
-                regs[decrypt(bc, vip + 1)] = decrypt(bc, vip + 2);
+                regs[bc[vip + 1]] = bc[vip + 2];
                 vip += 3;
                 break;
 
             case 0x01:  /* mov reg, param0 */
-                regs[decrypt(bc, vip + 1)] = param0;
+                regs[bc[vip + 1]] = param0;
                 vip += 2;
                 break;
 
             case 0x02:  /* mov dst, src */
-                regs[decrypt(bc, vip + 1)] = regs[decrypt(bc, vip + 2)];
+                regs[bc[vip + 1]] = regs[bc[vip + 2]];
                 vip += 3;
                 break;
 
-            case 0x03:  /* cmp reg, const  (opaque-predicate-obfuskiert) */
+            case 0x03:  /* cmp reg, const  (obfuscated with an opaque predicate) */
                 {
                     volatile unsigned int k = vip;
-                    unsigned int opaque = (k * k - k) & 1;   /* immer 0 */
-                    flag_eq = (regs[decrypt(bc, vip + 1)] == decrypt(bc, vip + 2)) ^ opaque;
+                    unsigned int opaque = (k * k - k) & 1;   /* always 0 */
+                    flag_eq = (regs[bc[vip + 1]] == bc[vip + 2]) ^ opaque;
                     vip += 3;
                 }
                 break;
 
             case 0x04:  /* cmp_ge reg, reg */
-                flag_ge = (regs[decrypt(bc, vip + 1)] >= regs[decrypt(bc, vip + 2)]);
+                flag_ge = (regs[bc[vip + 1]] >= regs[bc[vip + 2]]);
                 vip += 3;
                 break;
 
             case 0x05:  /* add reg, reg  (MBA + opaque predicate) */
                 {
-                    unsigned int x = regs[decrypt(bc, vip + 1)];
-                    unsigned int y = regs[decrypt(bc, vip + 2)];
+                    unsigned int x = regs[bc[vip + 1]];
+                    unsigned int y = regs[bc[vip + 2]];
                     volatile unsigned int k = vip;
-                    unsigned int opaque = (k * k - k) & 1;   /* immer 0 */
-                    regs[decrypt(bc, vip + 1)] = (x ^ y) + 2 * (x & y) + opaque;
+                    unsigned int opaque = (k * k - k) & 1;   /* always 0 */
+                    regs[bc[vip + 1]] = (x ^ y) + 2 * (x & y) + opaque;
                     vip += 3;
                 }
                 break;
 
             case 0x06:  /* je addr */
-                if (flag_eq) { vip = decrypt(bc, vip + 1); } else { vip += 2; }
+                if (flag_eq) { vip = bc[vip + 1]; } else { vip += 2; }
                 break;
 
             case 0x07:  /* jae addr */
-                if (flag_ge) { vip = decrypt(bc, vip + 1); } else { vip += 2; }
+                if (flag_ge) { vip = bc[vip + 1]; } else { vip += 2; }
                 break;
 
             case 0x08:  /* jmp addr */
-                vip = decrypt(bc, vip + 1);
+                vip = bc[vip + 1];
                 break;
 
             case 0x09:  /* vmexit */
@@ -82,13 +84,14 @@ unsigned int vm_execute(unsigned char *bc, unsigned int param0) {
     }
 }
 
-/* Verschluesselter Bytecode (erzeugt von encrypt_bytecode.py). */
+/* Embedded bytecode of the virtualized fib() (plaintext). Registers:
+ * r0=a/return, r1=b, r2=s, r3=n, r4=i, r5=constant 1. */
 unsigned char bytecode[] = {
-    0x00, 0x01, 0x02, 0x03, 0x05, 0x04, 0x06, 0x02, 0x09, 0x0B, 0x08, 0x0A,
-    0x0D, 0x0E, 0x0D, 0x0C, 0x10, 0x17, 0x07, 0x1B, 0x0D, 0x15, 0x16, 0x17,
-    0x11, 0x19, 0x1E, 0x19, 0x14, 0x03, 0x1A, 0x1C, 0x24, 0x26, 0x07, 0x2B,
-    0x12, 0x27, 0x24, 0x27, 0x2D, 0x2B, 0x2B, 0x29, 0x2C, 0x2C, 0x2C, 0x2E,
-    0x32, 0x34, 0x36, 0x36, 0x3C, 0x2B, 0x34, 0x37, 0x3A, 0x30,
+    0x00,0x00,0x00, 0x00,0x01,0x01, 0x00,0x05,0x01, 0x02,0x02,0x01, 0x01,0x03,
+    0x03,0x03,0x00, 0x06,0x15, 0x08,0x19, 0x00,0x00,0x00, 0x09,
+    0x00,0x04,0x02, 0x08,0x1E, 0x04,0x03,0x04, 0x07,0x25, 0x08,0x36,
+    0x02,0x02,0x00, 0x05,0x02,0x01, 0x02,0x00,0x01, 0x02,0x01,0x02,
+    0x05,0x04,0x05, 0x08,0x1E, 0x02,0x00,0x02, 0x09,
 };
 
 int main(int argc, char **argv) {

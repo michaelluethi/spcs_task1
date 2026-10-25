@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
+# Task 2 (c) - Disassembler for the custom VM bytecode.
+# Walks the bytecode array and prints each instruction in readable
+# assembly, together with its byte offset (useful for jump targets).
+# This is an analysis tool, not part of the protected program, so it
+# keeps its own copy of the (plaintext) bytecode.
 
-# Eigene Kopie des Bytecodes (aus dem C-File rueberkopiert)
+# Plaintext bytecode (copied from the C file)
 bytecode = [
     0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x00, 0x05, 0x01, 0x02, 0x02, 0x01,
     0x01, 0x03, 0x03, 0x03, 0x00, 0x06, 0x15, 0x08, 0x19, 0x00, 0x00, 0x00,

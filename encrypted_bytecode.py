@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-# Erzeugt den verschluesselten Bytecode: jedes Byte XOR (Position & 0xFF)
+# Task 2 (f) - Build helper that produces the encrypted ("blinded")
+# bytecode: each byte is XORed with (position & 0xFF). Run once; the
+# output is pasted as the bytecode[] array into vm_fib_blinded.c.
+# This script documents how the encrypted array was derived (reproducible).
 
 plaintext = [
     0x00,0x00,0x00, 0x00,0x01,0x01, 0x00,0x05,0x01, 0x02,0x02,0x01, 0x01,0x03,
@@ -10,11 +13,10 @@ plaintext = [
 ]
 
 encrypted = []
-
 for pos in range(len(plaintext)):
     encrypted.append(plaintext[pos] ^ (pos & 0xFF))
 
-# Ausgabe als C-Array-Zeilen (12 Bytes pro Zeile)
+# Output as C array lines (12 bytes per line)
 for i in range(0, len(encrypted), 12):
     chunk = encrypted[i:i+12]
     print("    " + " ".join(f"0x{b:02X}," for b in chunk))
